@@ -4,4 +4,19 @@ It is a per-player password system that guards user data while simultaneously pr
 
 ## Setup
 To setup LCEAuth, you must make a new [FourKit Minecraft server](https://github.com/sylvessa/MinecraftConsoles/releases/tag/nightly-dedicated-server)
-will finish in abt an hour lol
+Download the DLL release under releases and put it in the plugins folder.
+
+That's it.
+
+## Build
+To build LCEAuth, get the FourKit dll and reference it in .csproj (you can also just put it one directory above your LCEAuth folder)
+Run this command:
+```bash
+dotnet build LCEAuth.csproj
+```
+
+The build will appear in bin/Debug/net8.0
+Copy the LCEAuth.dll (nothing else) and put it in the plugins folder.
+<img width="732" height="188" alt="image" src="https://github.com/user-attachments/assets/cb1d4106-6417-4a3d-a277-295756077e2d" />
+
+### THIS IS A WORK IN PROGRESS, THERE MAY BE BUGS OR SECURITY VULNERABILITIES. IF YOU FIND A VULNERABILITY, FOLLOW THE INSTRUCTIONS IN SECURITY.MD
