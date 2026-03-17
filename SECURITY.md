@@ -10,7 +10,7 @@
 ## Reporting a Vulnerability
 
 To report a vulnerability, contact me privately via discord (unipm) and tell me
-1. what the vulnarability is
+1. what the vulnerability is
 2. how to replicate it
 3. what version of LCEAuth was used
 
