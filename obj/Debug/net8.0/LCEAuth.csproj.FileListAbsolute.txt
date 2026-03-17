@@ -1,0 +1,15 @@
+/home/unipm/Documents/LCEServerAuth/LCEAuth/obj/Debug/net8.0/LCEAuth.csproj.AssemblyReference.cache
+/home/unipm/Documents/LCEServerAuth/LCEAuth/obj/Debug/net8.0/LCEAuth.GeneratedMSBuildEditorConfig.editorconfig
+/home/unipm/Documents/LCEServerAuth/LCEAuth/obj/Debug/net8.0/LCEAuth.AssemblyInfoInputs.cache
+/home/unipm/Documents/LCEServerAuth/LCEAuth/obj/Debug/net8.0/LCEAuth.AssemblyInfo.cs
+/home/unipm/Documents/LCEServerAuth/LCEAuth/obj/Debug/net8.0/LCEAuth.csproj.CoreCompileInputs.cache
+/home/unipm/Documents/LCEServerAuth/LCEAuth/bin/Debug/net8.0/LCEAuth.deps.json
+/home/unipm/Documents/LCEServerAuth/LCEAuth/bin/Debug/net8.0/LCEAuth.dll
+/home/unipm/Documents/LCEServerAuth/LCEAuth/bin/Debug/net8.0/LCEAuth.pdb
+/home/unipm/Documents/LCEServerAuth/LCEAuth/bin/Debug/net8.0/Minecraft.Server.FourKit.dll
+/home/unipm/Documents/LCEServerAuth/LCEAuth/bin/Debug/net8.0/Minecraft.Server.FourKit.pdb
+/home/unipm/Documents/LCEServerAuth/LCEAuth/obj/Debug/net8.0/LCEAuth.csproj.Up2Date
+/home/unipm/Documents/LCEServerAuth/LCEAuth/obj/Debug/net8.0/LCEAuth.dll
+/home/unipm/Documents/LCEServerAuth/LCEAuth/obj/Debug/net8.0/refint/LCEAuth.dll
+/home/unipm/Documents/LCEServerAuth/LCEAuth/obj/Debug/net8.0/LCEAuth.pdb
+/home/unipm/Documents/LCEServerAuth/LCEAuth/obj/Debug/net8.0/ref/LCEAuth.dll
