@@ -281,7 +281,7 @@ public class AAdmin : CommandExecutor
 	public string passGen()
 	{
     	const string allowedChars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ0123456789"; // allowed characters for passgen - uni (why did i make this comment)
-    	return RandomNumberGenerator.GetString(allowedChars, 10);
+    	return RandomNumberGenerator.GetString(allowedChars, 16);
 	}
 	
 	public bool onCommand(CommandSender sender, Command command, string label, string[] args)
@@ -309,6 +309,28 @@ public class AAdmin : CommandExecutor
 				if (!AuthListener.testPass(args[1], newPass)) return false;
 
 				Console.WriteLine($"[AAuth] Recovered {args[1]}! New password: {newPass}");
+
+				return true;
+			}
+		}
+		if (args[0] == "changepass")
+		{
+			if (string.IsNullOrEmpty(args[1])) { Console.WriteLine("[AAuth] at /authadmin: missing arg Player"); return false; }
+			if (!AuthListener.isReal(args[1])) { Console.WriteLine($"[AAuth] at /authadmin: Player {args[1]} is not registered!"); return false; }
+
+			using (var db = new LiteDB.LiteDatabase(databasePath))
+			{
+				var col = db.GetCollection<PlayerDB>("playerdb");
+
+				var getPlr = col.Find(LiteDB.Query.EQ("Name", args[1])).FirstOrDefault();
+
+				getPlr.passCrypt = BCrypt.Net.BCrypt.HashPassword(args[2]);
+
+				col.Update(getPlr);
+
+				if (!AuthListener.testPass(args[1], args[2])) return false;
+
+				Console.WriteLine($"[AAuth] Changed {args[1]}'s password. New password: {args[2]}");
 
 				return true;
 			}
