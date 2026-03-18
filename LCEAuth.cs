@@ -1,4 +1,6 @@
-﻿namespace LCEAuth;
+using System.Security.Cryptography;
+
+namespace LCEAuth;
 
 public class LCEAuth : ServerPlugin
 {
@@ -6,6 +8,7 @@ public class LCEAuth : ServerPlugin
 		FourKit.addListener(new AuthListener());
 		FourKit.getCommand("auth").setExecutor(new Auth());
 		FourKit.getCommand("areg").setExecutor(new Areg());
+		FourKit.getCommand("authadmin").setExecutor(new AAdmin());
 	}
 
 	public void OnDisable() {}
@@ -271,5 +274,44 @@ public class Areg : CommandExecutor // areg is the account register - uni
 
 		p.sendMessage(createworked ? $"Account '{p.getName()}' created! Do /auth <password> and remember to keep your password somewhere safe!" : "Sorry, player creation has failed. Try again");
 		return createworked;
+	}
+}
+public class AAdmin : CommandExecutor
+{
+	public string passGen()
+	{
+    	const string allowedChars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ0123456789"; // allowed characters for passgen - uni (why did i make this comment)
+    	return RandomNumberGenerator.GetString(allowedChars, 10);
+	}
+	
+	public bool onCommand(CommandSender sender, Command command, string label, string[] args)
+	{
+		if (sender is Player) return false; // this is server line ONLY! - uni
+
+		if (string.IsNullOrEmpty(args[0])) return false;
+
+		if (args[0] == "recover")
+		{
+			if (string.IsNullOrEmpty(args[1])) { Console.WriteLine("[AAuth] at /authadmin: missing arg Player"); return false; }
+			if (!AuthListener.isReal(args[1])) { Console.WriteLine($"[AAuth] at /authadmin: Player {args[1]} is not registered!"); return false; }
+			string newPass = passGen(); // gen new pass - uni
+
+			using (var db = new LiteDB.LiteDatabase(databasePath))
+			{
+				var col = db.GetCollection<PlayerDB>("playerdb");
+
+				var getPlr = col.Find(LiteDB.Query.EQ("Name", args[1])).FirstOrDefault();
+
+				getPlr.passCrypt = BCrypt.Net.BCrypt.HashPassword(newPass);
+
+				col.Update(getPlr);
+
+				if (!AuthListener.testPass(args[1], newPass)) return false;
+
+				Console.WriteLine($"[AAuth] Recovered {args[1]}! New password: {newPass}");
+
+				return true;
+			}
+		}
 	}
 }
