@@ -104,6 +104,7 @@ public class AuthListener : Listener
 			plr.sendMessage($"Logged in as {plr.getName()}");
 			return;
 		}
+		if (isReal(plr.getName()) && (new LiteDB.LiteDatabase(databasePath)).GetCollection<PlayerDB>("playerdb").Find(LiteDB.Query.EQ("Name", plr.getName())).Select(x => new {coordins = x.coords}).FirstOrDefault().coords != null)
 		unauthedUsrs.Add(plr.getName());
 		plr.sendMessage("LCEAuth");
         plr.sendMessage("Type password to continue. /auth <password>"); // [TODO] add 30s wait - uni
