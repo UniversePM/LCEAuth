@@ -96,15 +96,37 @@ public class AuthListener : Listener
 		}
 	}
 
+	public static void tpPlr(Player plr)
+	{
+		using (var db = new LiteDB.LiteDatabase(databasePath))
+		{
+			var col = db.GetCollection<PlayerDB>("playerdb");
+			var coords = col.Find(LiteDB.Query.EQ("Name", plr.getName())).Select(x => new {coordins = x.coords}).FirstOrDefault().coordins;
+			if (coords != null)
+			{
+				plr.teleport(coords.x, coords.y, coords.z);
+			}
+		}
+	}
+
 	public static List<string> unauthedUsrs = // god i fucking hate c# sometimes - uni
 		new List<string>();
 	public static void AuthInit(Player plr)
 	{
 		if (addressCheck(plr)) {
 			plr.sendMessage($"Logged in as {plr.getName()}");
+			tpPlr(plr);
 			return;
 		}
-		if (isReal(plr.getName()) && (new LiteDB.LiteDatabase(databasePath)).GetCollection<PlayerDB>("playerdb").Find(LiteDB.Query.EQ("Name", plr.getName())).Select(x => new {coordins = x.coords}).FirstOrDefault().coords != null)
+		using (var db = new LiteDB.LiteDatabase(databasePath))
+		{
+			var col = db.GetCollection<PlayerDB>("playerdb");
+			var coords = col.Find(LiteDB.Query.EQ("Name", plr.getName())).Select(x => new {coordins = x.coords}).FirstOrDefault().coordins;
+			if (isReal(plr.getName()) && coords != null)
+			{
+				plr.teleport(0f, 255f, 0f);
+			}
+		}
 		unauthedUsrs.Add(plr.getName());
 		plr.sendMessage("LCEAuth");
         plr.sendMessage("Type password to continue. /auth <password>"); // [TODO] add 30s wait - uni
@@ -198,6 +220,22 @@ public class AuthListener : Listener
 	public void onLeave(PlayerLeaveEvent e)
 	{
 		if (unauthedUsrs.Contains(e.getPlayer().getName())) unauthedUsrs.Remove(e.getPlayer().getName());
+		else {
+			using (var db = new LiteDB.LiteDatabase(databasePath))
+			{
+				var col = db.GetCollection<PlayerDB>("playerdb");
+				var getPlr = col.Find(LiteDB.Query.EQ("Name", plr.getName())).FirstOrDefault();
+
+				getPlr.coords = new Coord
+				{
+					x = e.getPlayer().getX(),
+					y = e.getPlayer().getY(),
+					z = e.getPlayer().getZ()
+				};
+
+				col.Update(getPlr); // i pray to god this works lol - uni
+			}
+		}
 	}
 }
 public class Auth : CommandExecutor
