@@ -5,30 +5,88 @@ public class LCEAuth : ServerPlugin
 	public void OnEnable() {
 		FourKit.addListener(new AuthListener());
 		FourKit.getCommand("auth").setExecutor(new Auth());
+		FourKit.getCommand("areg").setExecutor(new Areg());
 	}
 
 	public void OnDisable() {}
 
 	public string GetName() => "LCEAuth";
-	public string GetVersion() => "0.1";
+	public string GetVersion() => "0.2";
 	public string GetAuthor() => "UniPM";
+}
+
+public class PlayerDB
+{
+	public string? Name { get; set; }
+	public string? passCrypt { get; set; }
+	// add uid and ip in the future perhaps? - uni
 }
 
 public class AuthListener : Listener
 {
+	public static readonly string databasePath = @".\plugindb\LCEAUTH_DB_DO_NOT_MODIFY.db";
+
+	public static bool testPass(string plrname, string pass)
+	{
+		if (string.IsNullOrEmpty(plrname) || string.IsNullOrEmpty(pass)) return false;
+		using (var db = new LiteDB.LiteDatabase(databasePath)) // the dll executes at the exe path, so this will be a folder next to plugins named plugindb - uni
+		{
+			var col = db.GetCollection<PlayerDB>("playerdb");
+
+			var getPlr = col.Find(LiteDB.Query.EQ("Name", plrname))
+				.Select(x => new {GetCrypt = x.passCrypt})
+				.FirstOrDefault();
+
+			if (getPlr != null && BCrypt.Net.BCrypt.Verify(pass, getPlr.GetCrypt)) return true; // bcrypt.net-next is really fucking weird - uni
+		}
+		return false;
+	}
+
+	public static bool isReal(string plrname)
+	{
+		if (string.IsNullOrEmpty(plrname)) return false;
+		using (var db = new LiteDB.LiteDatabase(databasePath))
+		{
+			var col = db.GetCollection<PlayerDB>("playerdb");
+
+			bool getPlr = col.Exists(LiteDB.Query.EQ("Name", plrname));
+			return getPlr;
+		}
+	}
+
+	public static void createPlr(string plrname, string pass)
+	{
+		if (string.IsNullOrEmpty(plrname) || string.IsNullOrEmpty(pass)) return;
+		using (var db = new LiteDB.LiteDatabase(databasePath))
+		{
+			var col = db.GetCollection<PlayerDB>("playerdb");
+
+			var newplr = new PlayerDB
+			{
+				Name = plrname,
+				passCrypt = BCrypt.Net.BCrypt.HashPassword(pass)
+			};
+
+			col.Insert(newplr);
+
+			return;
+		}
+	}
+
 	public static List<string> unauthedUsrs = // god i fucking hate c# sometimes - uni
 		new List<string>();
 	public static void AuthInit(Player plr)
 	{
 		unauthedUsrs.Add(plr.getName());
-		plr.sendMessage("LCEAuth 0.1");
-                plr.sendMessage("Type password to continue. /auth password"); // [TODO] add 30s wait - uni
-		Console.WriteLine($"UnauthedUsrs is: {unauthedUsrs}");
+		plr.sendMessage("LCEAuth");
+                plr.sendMessage("Type password to continue. /auth <password>"); // [TODO] add 30s wait - uni
+		if (!isReal(plr.getName())) plr.sendMessage("No account found! Register with /areg <password> <confirmpassword>");
 	}
 
 	public static bool AuthFinish(Player plr, string pass)
 	{
-		if (pass == "password") {unauthedUsrs.Remove(plr.getName()); return true;}
+		if (!isReal(plr.getName())) return false;
+		if (testPass(plr.getName(), pass)) {unauthedUsrs.Remove(plr.getName()); return true;}
 		return false;
 	}
 
@@ -36,6 +94,11 @@ public class AuthListener : Listener
 	public void onJoin(PlayerJoinEvent e)
 	{
 		Player player = e.getPlayer();
+		if (string.IsNullOrEmpty(player.getName()))
+		{
+			player.kickPlayer();
+			return;
+		}
 		Console.WriteLine($"{player.getName()} joined, preparing auth");
 		AuthInit(player);
 	}
@@ -75,7 +138,10 @@ public class AuthListener : Listener
 	[EventHandler]
 	public void onChat(PlayerChatEvent e)
 	{
-		if (unauthedUsrs.Contains(e.getPlayer().getName())) e.setCancelled(true);
+		if (unauthedUsrs.Contains(e.getPlayer().getName())) {
+
+			e.setCancelled(true);
+		}
 	}
 	[EventHandler]
 	public void onDmg(EntityDamageEvent e)
@@ -86,6 +152,11 @@ public class AuthListener : Listener
 	public void onDrop(PlayerDropItemEvent e)
 	{
 		if (unauthedUsrs.Contains(e.getPlayer().getName())) e.setCancelled(true);
+	}
+	[EventHandler]
+	public void onLeave(PlayerLeaveEvent e)
+	{
+		if (unauthedUsrs.Contains(e.getPlayer().getName())) unauthedUsrs.Remove(e.getPlayer().getName());
 	}
 }
 public class Auth : CommandExecutor
@@ -99,5 +170,27 @@ public class Auth : CommandExecutor
 
 		p.sendMessage(authworked ? "Welcome!" : "Sorry, that password was incorrect.");
 		return authworked;
+	}
+}
+public class Areg : CommandExecutor // areg is the account register - uni
+{
+	public bool onCommand(CommandSender sender, Command command, string label, string[] args)
+	{
+		if (!(sender is Player)) return false; // ik why this is needed now :3 - uni
+		Player p = (Player)sender;
+		
+		if (string.IsNullOrEmpty(args[0])) return false;
+
+		if (args[0] != args[1]) return false; // basic password confirmation - uni
+
+		bool createworked = AuthListener.isReal(p.getName());
+		if (createworked) return false;
+
+		AuthListener.createPlr(p.getName(), args[0]);
+
+		createworked = AuthListener.isReal(p.getName()); // reask the isReal (hehehe israel) - uni
+
+		p.sendMessage(createworked ? $"Account '{p.getName()}' created! Do /auth <password> and remember to keep your password somewhere safe!" : "Sorry, player creation has failed. Try again");
+		return createworked;
 	}
 }

@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <Reference Include="..\\Minecraft.Server.FourKit.dll" />
+    <Reference Include="..\\BCrypt.Net-Next.dll" />
+    <Reference Include="..\\LiteDB.dll" />
   </ItemGroup>
 
 </Project>
