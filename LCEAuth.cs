@@ -86,7 +86,11 @@ public class AuthListener : Listener
 		{
 			var col = db.GetCollection<PlayerDB>("playerdb");
 
-			var getPlr = col.Find(LiteDB)
+			var getPlr = col.Find(LiteDB.Query.EQ("Name", plr.getName()))
+				.Select(x => new {GetIP = x.ipAddress})
+				.FirstOrDefault();
+
+			return (getPlr != null && BCrypt.Net.BCrypt.Verify(plr.getAddress().getAddress().getHostAddress(), getPlr.GetIP)); // so long (thats what she said) - uni
 		}
 	}
 
@@ -94,7 +98,10 @@ public class AuthListener : Listener
 		new List<string>();
 	public static void AuthInit(Player plr)
 	{
-		
+		if (addressCheck(plr)) {
+			plr.sendMessage($"Logged in as {plr.getName()}");
+			return;
+		}
 		unauthedUsrs.Add(plr.getName());
 		plr.sendMessage("LCEAuth");
         plr.sendMessage("Type password to continue. /auth <password>"); // [TODO] add 30s wait - uni
@@ -112,7 +119,8 @@ public class AuthListener : Listener
 
 				var getPlr = col.Find(LiteDB.Query.EQ("Name", plr.getName()));
 
-				getPlr.ipAddress = plr.getAddress().getAddress().getHostAddress(); // why the hell is it like this?? - uni
+				getPlr.ipAddress = BCrypt.Net.BCrypt.HashPassword(plr.getAddress().getAddress().getHostAddress()); // why the hell is it like this?? - uni
+				// hashed for better protection :> - uni
 			}
 			return true;
 		}
