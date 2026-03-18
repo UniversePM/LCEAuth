@@ -15,11 +15,17 @@ public class LCEAuth : ServerPlugin
 	public string GetAuthor() => "UniPM";
 }
 
+public class Coord
+{
+	public float x, y, z;
+}
+
 public class PlayerDB
 {
 	public string? Name { get; set; }
 	public string? passCrypt { get; set; }
-	// add uid and ip in the future perhaps? - uni
+	public Coord? coords { get; set; }
+	public string? ipAddress { get; set; }
 }
 
 public class AuthListener : Listener
@@ -86,7 +92,14 @@ public class AuthListener : Listener
 	public static bool AuthFinish(Player plr, string pass)
 	{
 		if (!isReal(plr.getName())) return false;
-		if (testPass(plr.getName(), pass)) {unauthedUsrs.Remove(plr.getName()); return true;}
+		if (testPass(plr.getName(), pass)) {
+			unauthedUsrs.Remove(plr.getName());
+			using (db = new LiteDB.LiteDatabase(databasePath))
+			{
+				var col = db.GetCollection<PlayerDB>("playerdb");
+			}
+			return true;
+		}
 		return false;
 	}
 
