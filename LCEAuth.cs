@@ -43,7 +43,7 @@ public class AuthListener : Listener
 				.Select(x => new {GetCrypt = x.passCrypt})
 				.FirstOrDefault();
 
-			if (getPlr != null && BCrypt.Net.BCrypt.Verify(pass, getPlr.GetCrypt)) return true; // bcrypt.net-next is really fucking weird - uni
+			if (getPlr != null && getPlr.passCrypt != null && BCrypt.Net.BCrypt.Verify(pass, getPlr.GetCrypt)) return true; // bcrypt.net-next is really fucking weird - uni
 		}
 		return false;
 	}
@@ -63,6 +63,7 @@ public class AuthListener : Listener
 	public static void createPlr(string plrname, string pass)
 	{
 		if (string.IsNullOrEmpty(plrname) || string.IsNullOrEmpty(pass)) return;
+		if (isReal(plrname)) return;
 		using (var db = new LiteDB.LiteDatabase(databasePath))
 		{
 			var col = db.GetCollection<PlayerDB>("playerdb");
@@ -82,6 +83,7 @@ public class AuthListener : Listener
 	public static bool addressCheck(Player plr)
 	{
 		if (plr == null) return false;
+		if (!isReal(plrname)) return false;
 		using (var db = new LiteDB.LiteDatabase(databasePath))
 		{
 			var col = db.GetCollection<PlayerDB>("playerdb");
@@ -90,7 +92,7 @@ public class AuthListener : Listener
 				.Select(x => new {GetIP = x.ipAddress})
 				.FirstOrDefault();
 
-			return (getPlr != null && BCrypt.Net.BCrypt.Verify(plr.getAddress().getAddress().getHostAddress(), getPlr.GetIP)); // so long (thats what she said) - uni
+			return (getPlr != null && getPlr.GetIP != null && BCrypt.Net.BCrypt.Verify(plr.getAddress().getAddress().getHostAddress(), getPlr.GetIP)); // so long (thats what she said) - uni
 		}
 	}
 
@@ -117,7 +119,8 @@ public class AuthListener : Listener
 			{
 				var col = db.GetCollection<PlayerDB>("playerdb");
 
-				var getPlr = col.Find(LiteDB.Query.EQ("Name", plr.getName()));
+				var getPlr = col.Find(LiteDB.Query.EQ("Name", plr.getName()))
+					.FirstOrDefault();
 
 				getPlr.ipAddress = BCrypt.Net.BCrypt.HashPassword(plr.getAddress().getAddress().getHostAddress()); // why the hell is it like this?? - uni
 				// hashed for better protection :> - uni
