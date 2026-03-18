@@ -79,13 +79,25 @@ public class AuthListener : Listener
 		}
 	}
 
+	public static bool addressCheck(Player plr)
+	{
+		if (plr == null) return false;
+		using (var db = new LiteDB.LiteDatabase(databasePath))
+		{
+			var col = db.GetCollection<PlayerDB>("playerdb");
+
+			var getPlr = col.Find(LiteDB)
+		}
+	}
+
 	public static List<string> unauthedUsrs = // god i fucking hate c# sometimes - uni
 		new List<string>();
 	public static void AuthInit(Player plr)
 	{
+		
 		unauthedUsrs.Add(plr.getName());
 		plr.sendMessage("LCEAuth");
-                plr.sendMessage("Type password to continue. /auth <password>"); // [TODO] add 30s wait - uni
+        plr.sendMessage("Type password to continue. /auth <password>"); // [TODO] add 30s wait - uni
 		if (!isReal(plr.getName())) plr.sendMessage("No account found! Register with /areg <password> <confirmpassword>");
 	}
 
@@ -97,6 +109,10 @@ public class AuthListener : Listener
 			using (db = new LiteDB.LiteDatabase(databasePath))
 			{
 				var col = db.GetCollection<PlayerDB>("playerdb");
+
+				var getPlr = col.Find(LiteDB.Query.EQ("Name", plr.getName()));
+
+				getPlr.ipAddress = plr.getAddress().getAddress().getHostAddress(); // why the hell is it like this?? - uni
 			}
 			return true;
 		}
