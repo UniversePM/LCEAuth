@@ -1,9 +1,20 @@
+using Minecraft.Server.FourKit;
+using Minecraft.Server.FourKit.Plugin;
+using Minecraft.Server.FourKit.Event;
+using Minecraft.Server.FourKit.Event.Player;
+using Minecraft.Server.FourKit.Event.Entity;
+using Minecraft.Server.FourKit.Command;
+using Minecraft.Server.FourKit.Event.Block;
+using Minecraft.Server.FourKit.Event.Inventory;
+using Minecraft.Server.FourKit.Entity;
+
 using System.Security.Cryptography;
 
 namespace LCEAuth;
 
 public class LCEAuth : ServerPlugin
 {
+
 	public void OnEnable() {
 		FourKit.addListener(new AuthListener());
 		FourKit.getCommand("auth").setExecutor(new Auth());
@@ -11,104 +22,118 @@ public class LCEAuth : ServerPlugin
 		FourKit.getCommand("authadmin").setExecutor(new AAdmin());
 	}
 
-	public void OnDisable() {}
+	public void OnDisable() {
+		Database.Instance.Dispose();
+	}
 
-	public string GetName() => "LCEAuth";
-	public string GetVersion() => "0.2";
-	public string GetAuthor() => "UniPM";
-}
-
-public class Coord
-{
-	public float x, y, z;
+	public override string name => "LCEAuth";
+	public override string version => "0.3";
+	public override string author => "UniPM";
 }
 
 public class PlayerDB
 {
+	public LiteDB.ObjectId Id { get; set; } = LiteDB.ObjectId.NewObjectId(); // pretty much unused and only to prevent issues - uni
 	public string? Name { get; set; }
 	public string? passCrypt { get; set; }
-	public Coord? coords { get; set; }
+	public Location? coords { get; set; }
 	public string? ipAddress { get; set; }
+	public Guid? uid { get; set; }
 }
+
+public class Database : IDisposable
+{
+    private static Database? _instance;
+    private readonly LiteDB.LiteDatabase _db;
+
+    private Database()
+    {
+        _db = new LiteDB.LiteDatabase(@".\plugindb\LCEAUTH_DB_DO_NOT_MODIFY.db");
+    }
+
+    public static Database Instance => _instance ??= new Database();
+
+    public LiteDB.ILiteCollection<T> GetCollection<T>(string name)
+        => _db.GetCollection<T>(name);
+
+    public void Dispose()
+    {
+        _db.Dispose();
+        _instance = null;
+    }
+} // srry guys this singleton is vibecoded :( - uni
 
 public class AuthListener : Listener
 {
-	public static readonly string databasePath = @".\plugindb\LCEAUTH_DB_DO_NOT_MODIFY.db";
-
 	public static bool testPass(string plrname, string pass)
 	{
 		if (string.IsNullOrEmpty(plrname) || string.IsNullOrEmpty(pass)) return false;
-		using (var db = new LiteDB.LiteDatabase(databasePath)) // the dll executes at the exe path, so this will be a folder next to plugins named plugindb - uni
-		{
-			var col = db.GetCollection<PlayerDB>("playerdb");
 
-			var getPlr = col.Find(LiteDB.Query.EQ("Name", plrname))
-				.Select(x => new {GetCrypt = x.passCrypt})
-				.FirstOrDefault();
+		var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
 
-			if (getPlr != null && getPlr.passCrypt != null && BCrypt.Net.BCrypt.Verify(pass, getPlr.GetCrypt)) return true; // bcrypt.net-next is really fucking weird - uni
-		}
+		var getPlr = col.Find(LiteDB.Query.EQ("Name", plrname))
+			.Select(x => new {GetCrypt = x.passCrypt})
+			.FirstOrDefault();
+
+		if (getPlr != null && getPlr.GetCrypt != null && BCrypt.Net.BCrypt.Verify(pass, getPlr.GetCrypt)) return true; // bcrypt.net-next is really fucking weird - uni
 		return false;
 	}
 
 	public static bool isReal(string plrname)
 	{
 		if (string.IsNullOrEmpty(plrname)) return false;
-		using (var db = new LiteDB.LiteDatabase(databasePath))
-		{
-			var col = db.GetCollection<PlayerDB>("playerdb");
+		var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
 
-			bool getPlr = col.Exists(LiteDB.Query.EQ("Name", plrname));
-			return getPlr;
-		}
+		bool getPlr = col.Exists(LiteDB.Query.EQ("Name", plrname));
+		return getPlr;
 	}
 
 	public static void createPlr(string plrname, string pass)
 	{
 		if (string.IsNullOrEmpty(plrname) || string.IsNullOrEmpty(pass)) return;
 		if (isReal(plrname)) return;
-		using (var db = new LiteDB.LiteDatabase(databasePath))
+		var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
+
+		var newplr = new PlayerDB
 		{
-			var col = db.GetCollection<PlayerDB>("playerdb");
+			Name = plrname,
+			passCrypt = BCrypt.Net.BCrypt.HashPassword(pass)
+		};
 
-			var newplr = new PlayerDB
-			{
-				Name = plrname,
-				passCrypt = BCrypt.Net.BCrypt.HashPassword(pass)
-			};
+		col.Insert(newplr);
+	}
 
-			col.Insert(newplr);
+	public static PlayerDB? getPlrDB(string plrname)
+	{
+		if (string.IsNullOrEmpty(plrname)) return null;
+		var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
 
-			return;
-		}
+		var getPlr = col.Find(LiteDB.Query.EQ("Name", plrname))
+			.FirstOrDefault();
+
+		return getPlr;
 	}
 
 	public static bool addressCheck(Player plr)
 	{
 		if (plr == null) return false;
-		if (!isReal(plrname)) return false;
-		using (var db = new LiteDB.LiteDatabase(databasePath))
-		{
-			var col = db.GetCollection<PlayerDB>("playerdb");
+		if (!isReal(plr.getName())) return false;
+		var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
 
-			var getPlr = col.Find(LiteDB.Query.EQ("Name", plr.getName()))
-				.Select(x => new {GetIP = x.ipAddress})
-				.FirstOrDefault();
+		var getPlr = col.Find(LiteDB.Query.EQ("Name", plr.getName()))
+			.Select(x => new {GetIP = x.ipAddress})
+			.FirstOrDefault();
 
-			return (getPlr != null && getPlr.GetIP != null && BCrypt.Net.BCrypt.Verify(plr.getAddress().getAddress().getHostAddress(), getPlr.GetIP)); // so long (thats what she said) - uni
-		}
+		return (getPlr != null && getPlr.GetIP != null && BCrypt.Net.BCrypt.Verify(plr!.getAddress().getAddress().getHostAddress(), getPlr.GetIP)); // so long (thats what she said) - uni
 	}
 
 	public static void tpPlr(Player plr)
 	{
-		using (var db = new LiteDB.LiteDatabase(databasePath))
+		var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
+		var getPlr = col.FindOne(LiteDB.Query.EQ("Name", plr.getName()));
+		if (getPlr?.coords != null)
 		{
-			var col = db.GetCollection<PlayerDB>("playerdb");
-			var coords = col.Find(LiteDB.Query.EQ("Name", plr.getName())).Select(x => new {coordins = x.coords}).FirstOrDefault().coordins;
-			if (coords != null)
-			{
-				plr.teleport(coords.x, coords.y, coords.z);
-			}
+			plr.teleport(getPlr.coords);
 		}
 	}
 
@@ -121,42 +146,89 @@ public class AuthListener : Listener
 			tpPlr(plr);
 			return;
 		}
-		using (var db = new LiteDB.LiteDatabase(databasePath))
+		var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
+		var coords = col.Find(LiteDB.Query.EQ("Name", plr.getName())).Select(x => new {coordins = x.coords}).FirstOrDefault()?.coordins;
+		if (isReal(plr.getName()) && coords != null)
 		{
-			var col = db.GetCollection<PlayerDB>("playerdb");
-			var coords = col.Find(LiteDB.Query.EQ("Name", plr.getName())).Select(x => new {coordins = x.coords}).FirstOrDefault().coordins;
-			if (isReal(plr.getName()) && coords != null)
-			{
-				plr.teleport(0f, 255f, 0f);
-			}
+			plr.teleport(new Location(coords.getWorld(), 0, 1000, 0));
 		}
 		unauthedUsrs.Add(plr.getName());
 		plr.sendMessage("LCEAuth");
-        plr.sendMessage("Type password to continue. /auth <password>"); // [TODO] add 30s wait - uni
+        	plr.sendMessage("Type password to continue. /auth <password>"); // [TODO] add 30s wait - uni
+		plr.sendMessage("Optionally, you can input '/auth <password> -noip' to prevent IP tracking.");
+		if (getPlrDB(plr.getName())?.uid == null) { plr.sendMessage("You can also input '/auth <password -nouid>' to prevent UID tracking. You can combine both flags to get '-noip-nouid'."); }
 		if (!isReal(plr.getName())) plr.sendMessage("No account found! Register with /areg <password> <confirmpassword>");
 	}
 
-	public static bool AuthFinish(Player plr, string pass)
+	public static bool AuthFinish(Player plr, string[] args)
 	{
 		if (!isReal(plr.getName())) return false;
-		if (testPass(plr.getName(), pass)) {
+		if (testPass(plr.getName(), args[0])) {
 			unauthedUsrs.Remove(plr.getName());
-			using (db = new LiteDB.LiteDatabase(databasePath))
-			{
-				var col = db.GetCollection<PlayerDB>("playerdb");
+			var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
 
-				var getPlr = col.Find(LiteDB.Query.EQ("Name", plr.getName()))
-					.FirstOrDefault();
+			var getPlr = col.Find(LiteDB.Query.EQ("Name", plr.getName()))
+				.FirstOrDefault();
+			
+			if (getPlr == null) return false;
 
-				getPlr.ipAddress = BCrypt.Net.BCrypt.HashPassword(plr.getAddress().getAddress().getHostAddress()); // why the hell is it like this?? - uni
-				// hashed for better protection :> - uni
-			}
+			if (!args[1].Contains("-noip")) getPlr.ipAddress = BCrypt.Net.BCrypt.HashPassword(plr!.getAddress().getAddress().getHostAddress()); // why the hell is it like this?? - uni
+			if (!args[1].Contains("-nouid") && getPlr.uid == null) getPlr.uid = plr.getUniqueId(); // so much more simple than ^ this shit - uni
+			tpPlr(plr);
+
+			col.Update(getPlr);
+			// hashed for better protection :> - uni
 			return true;
 		}
 		return false;
 	}
 
-	[EventHandler]
+	public static bool cmdRecover(string[] args)
+	{
+		if (string.IsNullOrEmpty(args[1])) { Console.WriteLine("[AAuth] at /authadmin: missing arg Player"); return false; }
+                if (!AuthListener.isReal(args[1])) { Console.WriteLine($"[AAuth] at /authadmin: Player {args[1]} is not registered!"); return false; }
+                string newPass = AAdmin.passGen(); // gen new pass - uni
+
+                var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
+                var getPlr = col.Find(LiteDB.Query.EQ("Name", args[1])).FirstOrDefault();
+		
+		if (getPlr == null) { Console.WriteLine($"[AAuth] getPlr failed: null"); return false; }
+
+                getPlr.passCrypt = BCrypt.Net.BCrypt.HashPassword(newPass);
+
+                col.Update(getPlr);
+
+                if (!AuthListener.testPass(args[1], newPass)) return false;
+
+                Console.WriteLine($"[AAuth] Recovered {args[1]}! New password: {newPass}");
+                return true;
+	}
+
+	public static bool cmdChPass(string[] args) // I FUCKING HATE LITEDB!!! - uni
+	{
+		if (string.IsNullOrEmpty(args[1])) { Console.WriteLine("[AAuth] at /authadmin: missing arg Player"); return false; }
+                if (!AuthListener.isReal(args[1])) { Console.WriteLine($"[AAuth] at /authadmin: Player {args[1]} is not registered!"); return false; }
+
+                var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
+                var getPlr = col.Find(LiteDB.Query.EQ("Name", args[1])).FirstOrDefault();
+		
+		if (getPlr == null) { Console.WriteLine($"[AAuth] getPlr failed: null"); return false; }
+
+                getPlr.passCrypt = BCrypt.Net.BCrypt.HashPassword(args[2]);
+
+                col.Update(getPlr);
+
+                if (!AuthListener.testPass(args[1], args[2])) return false;
+
+                Console.WriteLine($"[AAuth] Changed {args[1]}'s password. New password: {args[2]}");
+                return true;
+
+	}
+	//  |   _ _    _ _ _  _ ___ _   _ _  _  _  _ _  _   _ __   |
+	//  |  |_  \  / |_ |\ |  | /    |_| /_\ |\ | |\ |  |_ |_\  |
+	// \|/ |_   \/  |_ | \|  | _\   | | | | | \| |/ |_ |_ | \ \|/ - uni, who fucking loves ascii art
+
+	[EventHandler(Priority = EventPriority.Lowest)]
 	public void onJoin(PlayerJoinEvent e)
 	{
 		Player player = e.getPlayer();
@@ -165,35 +237,51 @@ public class AuthListener : Listener
 			player.kickPlayer();
 			return;
 		}
+		if (isReal(player.getName()))
+		{
+			var plrDB = getPlrDB(player.getName());
+
+			if (plrDB != null && plrDB.uid != player.getUniqueId()) { unauthedUsrs.Add(player.getName()); player.sendMessage($"Sorry, but {player.getName()} is already registered with a different UID. If you believe this was a mistake, please contact your server administrator."); return; } // fuck anyone who joins with a diff uid lol - uni
+		}
 		Console.WriteLine($"{player.getName()} joined, preparing auth");
 		AuthInit(player);
 	}
-	[EventHandler]
+	[EventHandler(Priority = EventPriority.Lowest)]
+	public void onPortal(PlayerPortalEvent e)
+	{
+		if (unauthedUsrs.Contains(e.getPlayer().getName())) e.setCancelled(true);
+	}
+	[EventHandler(Priority = EventPriority.Lowest)]
+        public void onTp(PlayerTeleportEvent e)
+        {
+                if (unauthedUsrs.Contains(e.getPlayer().getName())) e.setCancelled(true);
+        }
+	[EventHandler(Priority = EventPriority.Lowest)]
+        public void onInvClick(InventoryInteractEvent e)
+        {
+                if (unauthedUsrs.Contains(e.getWhoClicked().getName())) e.setCancelled(true);
+        }
+	[EventHandler(Priority = EventPriority.Lowest)]
 	public void onBreak(BlockBreakEvent e)
 	{
 		if (unauthedUsrs.Contains(e.getPlayer().getName())) e.setCancelled(true);
 	}
-	[EventHandler]
+	[EventHandler(Priority = EventPriority.Lowest)]
 	public void onPlace(BlockPlaceEvent e)
 	{
 		if (unauthedUsrs.Contains(e.getPlayer().getName())) e.setCancelled(true);
 	}
-	[EventHandler]
+	[EventHandler(Priority = EventPriority.Lowest)]
 	public void onMove(PlayerMoveEvent e)
 	{
 		if (unauthedUsrs.Contains(e.getPlayer().getName())) e.setCancelled(true);
 	}
-	[EventHandler]
+	[EventHandler(Priority = EventPriority.Lowest)]
 	public void onInventory(InventoryOpenEvent e)
 	{
 		if (unauthedUsrs.Contains(e.getPlayer().getName())) e.setCancelled(true);
 	}
-	[EventHandler]
-	public void onInteract(PlayerInteractEvent e)
-	{
-		if (unauthedUsrs.Contains(e.getPlayer().getName())) e.setCancelled(true);
-	}
-	[EventHandler]
+	[EventHandler(Priority = EventPriority.Lowest)]
 	public void onDeath(PlayerDeathEvent e)
 	{
 		if (unauthedUsrs.Contains(e.getEntity().getName())) { // why tf is it getentity :sob: - uni
@@ -201,7 +289,7 @@ public class AuthListener : Listener
 			e.setKeepInventory(true);
 		}
 	}
-	[EventHandler]
+	[EventHandler(Priority = EventPriority.Lowest)]
 	public void onChat(PlayerChatEvent e)
 	{
 		if (unauthedUsrs.Contains(e.getPlayer().getName())) {
@@ -209,35 +297,33 @@ public class AuthListener : Listener
 			e.setCancelled(true);
 		}
 	}
-	[EventHandler]
+	[EventHandler(Priority = EventPriority.Lowest)]
 	public void onDmg(EntityDamageEvent e)
 	{
 		if (e.getEntity() is Player plr && unauthedUsrs.Contains(plr.getName())) e.setCancelled(true); // don't need to check if the entity is a player, only players can be unauthed :skull: - uni
 	}
-	[EventHandler]
+	[EventHandler(Priority = EventPriority.Lowest)]
 	public void onDrop(PlayerDropItemEvent e)
 	{
 		if (unauthedUsrs.Contains(e.getPlayer().getName())) e.setCancelled(true);
 	}
-	[EventHandler]
-	public void onLeave(PlayerLeaveEvent e)
+	[EventHandler(Priority = EventPriority.Lowest)]
+	public void onLeave(PlayerQuitEvent e)
 	{
 		if (unauthedUsrs.Contains(e.getPlayer().getName())) unauthedUsrs.Remove(e.getPlayer().getName());
 		else {
-			using (var db = new LiteDB.LiteDatabase(databasePath))
-			{
-				var col = db.GetCollection<PlayerDB>("playerdb");
-				var getPlr = col.Find(LiteDB.Query.EQ("Name", plr.getName())).FirstOrDefault();
+			var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
+			var getPlr = col.Find(LiteDB.Query.EQ("Name", e.getPlayer().getName())).FirstOrDefault();
 
-				getPlr.coords = new Coord
-				{
-					x = e.getPlayer().getX(),
-					y = e.getPlayer().getY(),
-					z = e.getPlayer().getZ()
-				};
+			if (getPlr == null) return;
 
-				col.Update(getPlr); // i pray to god this works lol - uni
-			}
+			var plrCrds = e.getPlayer().getLocation();
+
+			getPlr.coords = plrCrds;
+
+			Console.WriteLine($"{e.getPlayer().getName()} left with internal location: {e.getPlayer().getLocation()}");
+
+			col.Update(getPlr); // i pray to god this works lol - uni
 		}
 	}
 }
@@ -247,8 +333,9 @@ public class Auth : CommandExecutor
 	{
 		if (!(sender is Player)) return false; // idk why this is needed - uni
 		Player p = (Player)sender; // player initialization
+		if (!AuthListener.unauthedUsrs.Contains(p.getName())) return false; // forgot a check like this - uni
 
-		bool authworked = AuthListener.AuthFinish(p, args[0]); // p for player, args[0] should be password? - uni
+		bool authworked = AuthListener.AuthFinish(p, args); // p for player, args[0] should be password? - uni
 
 		p.sendMessage(authworked ? "Welcome!" : "Sorry, that password was incorrect.");
 		return authworked;
@@ -278,62 +365,26 @@ public class Areg : CommandExecutor // areg is the account register - uni
 }
 public class AAdmin : CommandExecutor
 {
-	public string passGen()
+	public static string passGen()
 	{
-    	const string allowedChars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ0123456789"; // allowed characters for passgen - uni (why did i make this comment)
-    	return RandomNumberGenerator.GetString(allowedChars, 16);
+    		const string allowedChars = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNOPQRSTUVWXYZ0123456789"; // allowed characters for passgen - uni (why did i make this comment)
+    		return RandomNumberGenerator.GetString(allowedChars, 16);
 	}
 	
 	public bool onCommand(CommandSender sender, Command command, string label, string[] args)
 	{
-		if (sender is Player) return false; // this is server line ONLY! - uni
+		if (!(sender is ConsoleCommandSender)) return false; // this is server line ONLY! - uni
 
 		if (string.IsNullOrEmpty(args[0])) return false;
 
 		if (args[0] == "recover")
 		{
-			if (string.IsNullOrEmpty(args[1])) { Console.WriteLine("[AAuth] at /authadmin: missing arg Player"); return false; }
-			if (!AuthListener.isReal(args[1])) { Console.WriteLine($"[AAuth] at /authadmin: Player {args[1]} is not registered!"); return false; }
-			string newPass = passGen(); // gen new pass - uni
-
-			using (var db = new LiteDB.LiteDatabase(databasePath))
-			{
-				var col = db.GetCollection<PlayerDB>("playerdb");
-
-				var getPlr = col.Find(LiteDB.Query.EQ("Name", args[1])).FirstOrDefault();
-
-				getPlr.passCrypt = BCrypt.Net.BCrypt.HashPassword(newPass);
-
-				col.Update(getPlr);
-
-				if (!AuthListener.testPass(args[1], newPass)) return false;
-
-				Console.WriteLine($"[AAuth] Recovered {args[1]}! New password: {newPass}");
-
-				return true;
-			}
+			AuthListener.cmdRecover(args);
 		}
 		if (args[0] == "changepass")
 		{
-			if (string.IsNullOrEmpty(args[1])) { Console.WriteLine("[AAuth] at /authadmin: missing arg Player"); return false; }
-			if (!AuthListener.isReal(args[1])) { Console.WriteLine($"[AAuth] at /authadmin: Player {args[1]} is not registered!"); return false; }
-
-			using (var db = new LiteDB.LiteDatabase(databasePath))
-			{
-				var col = db.GetCollection<PlayerDB>("playerdb");
-
-				var getPlr = col.Find(LiteDB.Query.EQ("Name", args[1])).FirstOrDefault();
-
-				getPlr.passCrypt = BCrypt.Net.BCrypt.HashPassword(args[2]);
-
-				col.Update(getPlr);
-
-				if (!AuthListener.testPass(args[1], args[2])) return false;
-
-				Console.WriteLine($"[AAuth] Changed {args[1]}'s password. New password: {args[2]}");
-
-				return true;
-			}
+			AuthListener.cmdChPass(args);
 		}
+		return false;
 	}
 }

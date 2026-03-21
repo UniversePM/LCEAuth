@@ -1,15 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <Reference Include="..\\Minecraft.Server.FourKit.dll" />
-    <Reference Include="..\\BCrypt.Net-Next.dll" />
-    <Reference Include="..\\LiteDB.dll" />
+	<Reference Include="Minecraft.Server.FourKit"> 
+		<HintPath>..\Minecraft.Server.Fourkit.dll</HintPath>
+	</Reference>
+	<Reference Include="BCrypt.Net-Next">
+		<HintPath>.\LCEAuth\BCrypt.Net-Next.dll</HintPath>
+	</Reference>
+	<Reference Include="LiteDB">
+                <HintPath>.\LCEAuth\LiteDB.dll</HintPath>
+        </Reference>
   </ItemGroup>
 
 </Project>
