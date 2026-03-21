@@ -4,8 +4,8 @@ It is a per-player password system that guards user data while simultaneously pr
 
 ## Setup
 To setup LCEAuth, you must make a new [FourKit Minecraft server](https://github.com/sylvessa/MinecraftConsoles/releases/tag/nightly-dedicated-server)
-Download the DLL release under releases and put it in the plugins folder.
-Dependencies include BCrypt and LiteDB, which also need to be put in the plugins folder. This can and will change in the future.
+Download the latest release of LCEAuth (LCEAuth.zip) and unpack it in the plugins folder.
+After doing that, create a folder in your server directory named "plugindb".
 
 That's it.
 
