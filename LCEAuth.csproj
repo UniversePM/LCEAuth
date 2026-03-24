@@ -11,11 +11,11 @@
 		<HintPath>..\Minecraft.Server.Fourkit.dll</HintPath>
 	</Reference>
 	<Reference Include="BCrypt.Net-Next">
-		<HintPath>.\LCEAuth\BCrypt.Net-Next.dll</HintPath>
+		<HintPath>.\BCrypt.Net-Next.dll</HintPath>
 	</Reference>
 	<Reference Include="LiteDB">
-                <HintPath>.\LCEAuth\LiteDB.dll</HintPath>
-        </Reference>
+        <HintPath>.\LiteDB.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
