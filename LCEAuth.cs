@@ -294,7 +294,7 @@ public class AuthListener : Listener
                 if (unauthedUsrs.Contains(e.getPlayer().getName())) e.setCancelled(true);
         }
 	[EventHandler(Priority = EventPriority.Lowest)]
-        public void onInvClick(InventoryInteractEvent e)
+        public void onInvClick(InventoryClickEvent e)
         {
                 if (unauthedUsrs.Contains(e.getWhoClicked().getName())) e.setCancelled(true);
         }
