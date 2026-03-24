@@ -89,16 +89,17 @@ public class AuthListener : Listener
 		return getPlr;
 	}
 
-	public static void createPlr(string plrname, string pass)
+	public static void createPlr(Player plr, string pass)
 	{
-		if (string.IsNullOrEmpty(plrname) || string.IsNullOrEmpty(pass)) return;
-		if (isReal(plrname)) return;
+		if (string.IsNullOrEmpty(pass)) return;
+		if (isReal(plr.getName())) return;
 		var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
 
 		var newplr = new PlayerDB
 		{
-			Name = plrname,
-			passCrypt = BCrypt.Net.BCrypt.HashPassword(pass)
+			Name = plr.getName(),
+			passCrypt = BCrypt.Net.BCrypt.HashPassword(pass),
+			uid = plr.getUniqueId()
 		};
 
 		col.Insert(newplr);
@@ -139,6 +140,9 @@ public class AuthListener : Listener
 //	}
 
 	public static List<string> unauthedUsrs = // god i fucking hate c# sometimes - uni
+		new List<string>();
+	
+	public static List<string> fuidUsrs = // new check for failed uids - uni
 		new List<string>();
 
 	public static void AuthInit(Player plr)
@@ -195,11 +199,8 @@ public class AuthListener : Listener
 			if (getPlr == null) return false;
 			if (args.Length == 2) {
 				if (!args[1].Contains("-noip")) getPlr.ipAddress = BCrypt.Net.BCrypt.HashPassword(plr!.getAddress().getAddress().getHostAddress()); // why the hell is it like this?? - uni
-//				if (!args[1].Contains("-nouid") && getPlr.uid == null) getPlr.uid = plr.getUniqueId(); // so much more simple than ^ this shit - uni
 			} else {
 				getPlr.ipAddress = BCrypt.Net.BCrypt.HashPassword(plr!.getAddress().getAddress().getHostAddress()); // why the hell is it like this?? - uni
-//                              getPlr.uid = plr.getUniqueId(); // so much more simple than ^ this shit - uni
-//                              don't ever think about adding this shit again - uni
 			} // copying and pasting is my passion - uni
 //			tpPlr(plr);
 
@@ -277,8 +278,8 @@ public class AuthListener : Listener
 		if (isReal(player.getName()))
 		{
 			var plrDB = getPlrDB(player.getName());
-
-			if (plrDB != null && plrDB.uid != player.getUniqueId()) { unauthedUsrs.Add(player.getName()); player.sendMessage($"Sorry, but {player.getName()} is already registered with a different UID. If you believe this was a mistake, please contact your server administrator."); return; } // fuck anyone who joins with a diff uid lol - uni
+			Console.WriteLine($"{player.getName()} uid: {player.getUniqueId()} dbuid: {plrDB.uid}");
+			if (plrDB != null && plrDB.uid != player.getUniqueId()) { unauthedUsrs.Add(player.getName()); fuidUsrs.Add(player.getName()); player.sendMessage($"Sorry, but {player.getName()} is already registered with a different UID. Contact your server administrator if this was incorrect."); return; } // fuck anyone who joins with a diff uid lol - uni
 		}
 		Console.WriteLine($"{player.getName()} joined, preparing auth");
 		AuthInit(player);
@@ -368,7 +369,9 @@ public class Auth : CommandExecutor
 	{
 		if (!(sender is Player)) return false; // idk why this is needed - uni
 		Player p = (Player)sender; // player initialization
+
 		if (!AuthListener.unauthedUsrs.Contains(p.getName())) return false; // forgot a check like this - uni
+		if (AuthListener.fuidUsrs.Contains(p.getName())) return false; // holy shit im a dumbass - uni
 
 		bool authworked = AuthListener.AuthFinish(p, args); // p for player, args[0] should be password? - uni
 
@@ -382,6 +385,9 @@ public class Areg : CommandExecutor // areg is the account register - uni
 	{
 		if (!(sender is Player)) return false; // ik why this is needed now :3 - uni
 		Player p = (Player)sender;
+
+		if (!AuthListener.unauthedUsrs.Contains(p.getName())) return false;
+		if (AuthListener.fuidUsrs.Contains(p.getName())) return false;
 		
 		if (args.Length != 2) return false;
 
@@ -392,7 +398,7 @@ public class Areg : CommandExecutor // areg is the account register - uni
 		bool createworked = AuthListener.isReal(p.getName());
 		if (createworked) return false;
 
-		AuthListener.createPlr(p.getName(), args[0]);
+		AuthListener.createPlr(p, args[0]);
 
 		createworked = AuthListener.isReal(p.getName()); // reask the isReal (hehehe israel) - uni
 
