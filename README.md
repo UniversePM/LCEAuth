@@ -30,6 +30,14 @@ authadmin recover <username>
 ```bash
 authadmin changepass <username> <newpassword>
 ```
-^ Changed the password of a user to a new one. Useful for if the password is compromised or unsecure.
+^ Changes the password of a user to a new one. Useful for if the password is compromised or unsecure.
+```bash
+authadmin clearip <username>
+```
+^ Clears the IP for a user, whether that be for privacy sake or if a nosy family member plays the same server.
+```bash
+authadmin delete <username>
+```
+^ Deletes the users entry in the DB. This is useful against corrupted or non-functioning accounts. It's also good for clearing pre-compromised UIDs and inactive users.
 
 ### THIS IS A WORK IN PROGRESS, THERE MAY BE BUGS OR SECURITY VULNERABILITIES. IF YOU FIND A VULNERABILITY, FOLLOW THE INSTRUCTIONS IN SECURITY.MD
