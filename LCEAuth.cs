@@ -14,6 +14,7 @@ namespace LCEAuth;
 
 public class LCEAuth : ServerPlugin
 {
+	// i promise i'll rewrite this some day - uni
 
 	public void OnEnable() {
 		FourKit.addListener(new AuthListener());
@@ -33,7 +34,7 @@ public class LCEAuth : ServerPlugin
 
 public class PlayerDB
 {
-	public LiteDB.ObjectId Id { get; set; } = LiteDB.ObjectId.NewObjectId(); // pretty much unused and only to prevent issues - uni
+	public LiteDB.ObjectId Id { get; set; } = LiteDB.ObjectId.NewObjectId(); // pretty much unused and only to prevent issues - uni | update: i used it :D - uni
 	public string? Name { get; set; }
 	public string? passCrypt { get; set; }
 	public Location? coords { get; set; }
@@ -168,7 +169,7 @@ public class AuthListener : Listener
 
 		if (addressCheck(plr)) {
 			plr.sendMessage($"Logged in as {plr.getName()}");
-			Console.WriteLine($"PlayerDB Location for {plr.getName()}: {getPlrDB(plr.getName()).coords}");
+//			Console.WriteLine($"PlayerDB Location for {plr.getName()}: {getPlrDB(plr.getName()).coords}");
 			return;
 		}
 //		var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
@@ -232,7 +233,7 @@ public class AuthListener : Listener
 
                 if (!AuthListener.testPass(args[1], newPass)) return false;
 		
-		FourKit.getPlayer(args[1]).kickPlayer();
+		if (FourKit.getPlayer(args[1]) != null) FourKit.getPlayer(args[1]).kickPlayer();
                 Console.WriteLine($"[AAuth] Recovered {args[1]}! New password: {newPass}");
                 return true;
 	}
@@ -257,11 +258,53 @@ public class AuthListener : Listener
 
                 if (!AuthListener.testPass(args[1], args[2])) return false;
 		
-		FourKit.getPlayer(args[1]).kickPlayer();
+		if (FourKit.getPlayer(args[1]) != null) FourKit.getPlayer(args[1]).kickPlayer();
                 Console.WriteLine($"[AAuth] Changed {args[1]}'s password. New password: {args[2]}");
                 return true;
 
 	}
+
+	public static bool cmdClrIP(string[] args)
+	{
+		if (args.Length != 2) return false;
+
+		if (string.IsNullOrEmpty(args[1])) { Console.WriteLine("[AAuth] at /authadmin: missing arg Player"); return false; }
+		if (!AuthListener.isReal(args[1])) { Console.WriteLine($"[AAuth] at /authadmin: Player {args[1]} is not registered!"); return false; }
+
+		var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
+		var getPlr = col.Find(LiteDB.Query.EQ("Name", args[1])).FirstOrDefault();
+
+		if (getPlr == null) { Console.WriteLine("[AAuth] getPlr failed: null"); return false; }
+
+		getPlr.ipAddress = null;
+
+		col.Update(getPlr);
+
+		if (getPlrDB(args[1]).ipAddress != null) return false;
+		
+		if (FourKit.getPlayer(args[1]) != null) FourKit.getPlayer(args[1]).kickPlayer();
+		Console.WriteLine($"[AAuth] Cleared {args[1]}'s IP.");
+		return true;
+	}
+
+	public static bool cmdDelPlr(string[] args)
+	{
+		if (args.Length != 2) return false;
+
+		if (string.IsNullOrEmpty(args[1])) { Console.WriteLine("[AAuth] at /authadmin: missing arg Player"); return false; }
+		if (!AuthListener.isReal(args[1])) { Console.WriteLine($"[AAuth] at /authadmin: Player {args[1]} is not registered!"); return false; }
+
+		var col = Database.Instance.GetCollection<PlayerDB>("playerdb");
+		var getPlr = col.Find(LiteDB.Query.EQ("Name", args[1])).FirstOrDefault();
+
+		if (getPlr == null) { Console.WriteLine("[AAuth] getPlr failed: null"); return false; }
+
+		bool isDel = col.Delete(getPlr.Id);
+		if (FourKit.getPlayer(args[1]) != null) FourKit.getPlayer(args[1]).kickPlayer();
+		Console.WriteLine(isDel ? $"[AAuth] Deleted player {args[1]} with uid: {getPlr.uid}" : "[AAuth] at /authadmin: failed to execute command, report in github");
+		return isDel;
+	}
+
 	//  |   _ _    _ _ _  _ ___ _   _ _  _  _  _ _  _   _ __   |
 	//  |  |_  \  / |_ |\ |  | /    |_| /_\ |\ | |\ |  |_ |_\  |
 	// \|/ |_   \/  |_ | \|  | _\   | | | | | \| |/ |_ |_ | \ \|/ - uni, who fucking loves ascii art
@@ -418,18 +461,22 @@ public class AAdmin : CommandExecutor
 	{
 		if (!(sender is ConsoleCommandSender)) return false; // this is server line ONLY! - uni
 		
-		if (!(args.Length >= 1)) return false;
+		if (args.Length < 1) return false;
 
 		if (string.IsNullOrEmpty(args[0])) return false;
 
-		if (args[0] == "recover")
+		switch(args[0])
 		{
-			return AuthListener.cmdRecover(args);
+			case "recover":
+				return AuthListener.cmdRecover(args);
+			case "changepass":
+				return AuthListener.cmdChPass(args);
+			case "clearip":
+				return AuthListener.cmdClrIP(args);
+			case "delete":
+				return AuthListener.cmdDelPlr(args);
 		}
-		if (args[0] == "changepass")
-		{
-			return AuthListener.cmdChPass(args);
-		}
+
 		return false;
 	}
 }
