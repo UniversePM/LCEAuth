@@ -1,3 +1,5 @@
+# THIS PROJECT IS NO LONGER BEING MAINTAINED.
+
 # LCEAuth
 LCEAuth is an up-to-date server security plugin designed to protect your users.
 It is a per-player password system that guards user data while simultaneously preventing bots.
